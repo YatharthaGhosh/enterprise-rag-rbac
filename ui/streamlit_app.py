@@ -54,12 +54,18 @@ with st.sidebar:
         st.stop()
     st.caption("Can read: " + ", ".join(f"`{x}`" for x in st.session_state.can_read))
     mode = st.selectbox("Retrieval mode", ["hybrid_rerank", "hybrid", "dense"])
+    demo = False
     try:
-        st.caption(f"Chunks indexed: {requests.get(f'{API}/health', timeout=5).json()['chunks_indexed']}")
+        health = requests.get(f"{API}/health", timeout=5).json()
+        demo = health.get("demo_mode", False)
+        st.caption(f"Chunks indexed: {health['chunks_indexed']}")
     except requests.RequestException:
         pass
+    if demo:
+        st.info("Public demo: questions are rate-limited and uploads are disabled. "
+                "Source: github.com/YatharthaGhosh/enterprise-rag-rbac")
 
-    if choice == "admin":
+    if choice == "admin" and not demo:
         st.divider()
         st.subheader("Upload a document")
         f = st.file_uploader("PDF, DOCX or XLSX", type=["pdf", "docx", "xlsx"])

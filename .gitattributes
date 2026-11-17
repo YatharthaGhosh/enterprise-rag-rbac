@@ -3,3 +3,5 @@
 *.docx binary
 *.xlsx binary
 *.png binary
+*.sh text eol=lf
+Dockerfile text eol=lf

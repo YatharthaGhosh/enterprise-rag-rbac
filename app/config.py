@@ -47,6 +47,10 @@ class Settings(BaseSettings):
 
     docs_dir: str = str(ROOT / "data" / "docs")
 
+    # Public demo: disable uploads/re-indexing and cap questions per hour (shared LLM quota)
+    demo_mode: bool = False
+    demo_queries_per_hour: int = 60
+
 
 @lru_cache
 def get_settings() -> Settings:

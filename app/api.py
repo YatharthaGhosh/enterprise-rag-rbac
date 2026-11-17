@@ -20,12 +20,19 @@ from app.auth import authenticate, create_token, current_user, require_admin
 from app.config import get_settings
 from app.ingest import LEVEL_BY_FOLDER, SUPPORTED, ingest_file, sync_directory
 from app.rag import answer
+from app.ratelimit import SlidingWindowLimiter
 from app.rbac import DEPARTMENTS, Level, User, can_read
 from app.retrieval import MODES
 from app.store import collection_exists, get_client
 
 logging.basicConfig(level=logging.INFO)
 app = FastAPI(title="Enterprise RAG with RBAC", version="0.1.0")
+_limiter = SlidingWindowLimiter(get_settings().demo_queries_per_hour)
+
+
+def _demo_guard() -> None:
+    if get_settings().demo_mode:
+        raise HTTPException(403, "Uploading and re-indexing are disabled in the public demo")
 
 
 class LoginIn(BaseModel):
@@ -41,7 +48,7 @@ class QueryIn(BaseModel):
 @app.get("/health")
 def health() -> dict:
     count = get_client().count(get_settings().collection).count if collection_exists() else 0
-    return {"status": "ok", "chunks_indexed": count}
+    return {"status": "ok", "chunks_indexed": count, "demo_mode": get_settings().demo_mode}
 
 
 @app.post("/auth/login")
@@ -62,6 +69,10 @@ def me(user: User = Depends(current_user)) -> dict:
 async def query(body: QueryIn, user: User = Depends(current_user)) -> dict:
     if body.mode and body.mode not in MODES:
         raise HTTPException(422, f"mode must be one of {MODES}")
+    if get_settings().demo_mode:
+        allowed, wait = _limiter.try_acquire()
+        if not allowed:
+            raise HTTPException(429, f"The public demo's hourly question limit was reached. Try again in {wait // 60 + 1} min.")
     try:
         return await run_in_threadpool(answer, user, body.question, body.mode)
     except RuntimeError as e:  # configuration problem, e.g. missing API key
@@ -78,6 +89,7 @@ async def ingest(
     access_level: str = Form(..., description="public | internal | confidential"),
     _: User = Depends(require_admin),
 ) -> dict:
+    _demo_guard()
     name = Path(file.filename or "").name
     if Path(name).suffix.lower() not in SUPPORTED:
         raise HTTPException(422, f"Supported types: {sorted(SUPPORTED)}")
@@ -92,5 +104,6 @@ async def ingest(
 
 @app.post("/ingest/sync")
 async def ingest_sync(force: bool = False, _: User = Depends(require_admin)) -> dict:
+    _demo_guard()
     results = await run_in_threadpool(sync_directory, None, force)
     return {"results": [r.__dict__ for r in results]}
