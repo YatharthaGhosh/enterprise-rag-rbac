@@ -1,0 +1,48 @@
+[project]
+name = "enterprise-rag-rbac"
+version = "0.1.0"
+description = "RAG over internal company documents with role-based access control, hybrid search, reranking, grounded citations and evaluation."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "python-multipart>=0.0.9",
+    "qdrant-client[fastembed]>=1.12",
+    "openai>=1.50",
+    "docling>=2.15",
+    "llama-index-core>=0.12",
+    "llama-index-vector-stores-qdrant>=0.4",
+    "llama-index-embeddings-fastembed>=0.3",
+    "llama-index-llms-openai-like>=0.3",
+    "pyjwt>=2.9",
+    "streamlit>=1.38",
+    "requests>=2.32",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3", "reportlab>=4.2", "python-docx>=1.1", "openpyxl>=3.1", "httpx>=0.27", "ruff>=0.6"]
+eval = ["ragas>=0.3,<0.4", "langchain-openai>=0.3", "langchain-community>=0.3,<0.4", "datasets>=2.20"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["B008", "E501"]  # Depends()/File() defaults are FastAPI style; long lines are left to the formatter
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/generate_corpus.py" = ["E501"]  # long document text

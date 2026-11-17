@@ -1,0 +1,5 @@
+# Documents are binary: never convert line endings
+*.pdf binary
+*.docx binary
+*.xlsx binary
+*.png binary
